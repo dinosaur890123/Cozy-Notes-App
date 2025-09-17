@@ -67,6 +67,24 @@
     return leaf;
   }
 
+  // Parallax background: update CSS variables based on mouse position
+  let rafId = null;
+  let mouseX = 0, mouseY = 0;
+  function updateParallaxVars() {
+    rafId = null;
+    // Apply values in pixels; CSS uses them in calc() for subtle movement
+    if (els.parallaxBg) {
+      els.parallaxBg.style.setProperty('--mouse-x', mouseX.toFixed(1) + 'px');
+      els.parallaxBg.style.setProperty('--mouse-y', mouseY.toFixed(1) + 'px');
+    }
+  }
+  function handleMouseMove(e) {
+    // Center the origin so movement is symmetric around viewport center
+    mouseX = e.clientX - window.innerWidth / 2;
+    mouseY = e.clientY - window.innerHeight / 2;
+    if (!rafId) rafId = requestAnimationFrame(updateParallaxVars);
+  }
+
   function spawnLeaves() {
     const targetCount = Math.min(26, Math.max(12, Math.round(window.innerWidth / 60)));
     const current = els.leavesLayer.childElementCount;
