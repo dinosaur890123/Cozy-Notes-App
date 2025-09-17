@@ -13,6 +13,7 @@
 		<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@600;700;800&display=swap" rel="stylesheet" />
 
 		<link rel="stylesheet" href="./styles.css" />
+		<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 	</head>
 	<body>
 		<noscript>You need to enable JavaScript to run this app.</noscript>
@@ -46,12 +47,18 @@
 				<header class="editor-header">
 					<input id="titleInput" class="title-input" type="text" placeholder="Untitled note" />
 					<div class="editor-actions">
+						<div id="viewControls" class="view-controls">
+							<button id="viewSplitBtn" class="btn subtle active" title="Split View">📖</button>
+							<button id="viewEditorBtn" class="btn subtle" title="Editor Only">✍️</button>
+							<button id="viewPreviewBtn" class="btn subtle" title="Preview Only">👀</button>
+						</div>
 						<button id="pinBtn" class="btn subtle" title="Pin/Unpin">📌</button>
 						<button id="deleteBtn" class="btn danger" title="Delete note">🗑️</button>
 					</div>
 				</header>
-				<section class="editor-body">
+				<section id="editorBody" class="editor-body">
 					<textarea id="contentInput" class="content-input" placeholder="Start writing your cozy thoughts..."></textarea>
+					<div id="previewOutput" class="preview-output"></div>
 				</section>
 			</main>
 		</div>
@@ -62,4 +69,4 @@
 
 		<script src="./app.js" defer></script>
 	</body>
-	</html>
+</html>

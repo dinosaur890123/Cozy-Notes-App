@@ -16,8 +16,13 @@
     searchInput: q('#searchInput'),
     titleInput: q('#titleInput'),
     contentInput: q('#contentInput'),
+    previewOutput: q('#previewOutput'),
     pinBtn: q('#pinBtn'),
     deleteBtn: q('#deleteBtn'),
+    editorBody: q('#editorBody'),
+    viewSplitBtn: q('#viewSplitBtn'),
+    viewEditorBtn: q('#viewEditorBtn'),
+    viewPreviewBtn: q('#viewPreviewBtn'),
   };
 
   // Storage
@@ -117,6 +122,7 @@
     if (!note) return;
     els.titleInput.value = note.title || '';
     els.contentInput.value = note.content || '';
+    els.previewOutput.innerHTML = marked.parse(note.content || '');
     els.pinBtn.dataset.pinned = note.pinned ? 'true' : 'false';
     els.pinBtn.textContent = note.pinned ? '📌' : '📍';
     renderList();
@@ -157,6 +163,7 @@
     if (!note) return;
     note.title = els.titleInput.value.trim();
     note.content = els.contentInput.value;
+    els.previewOutput.innerHTML = marked.parse(note.content);
     note.updatedAt = now();
     save();
     renderList();
@@ -180,12 +187,22 @@
     state.activeId = state.notes[0].id;
   }
 
+  function setViewMode(mode) {
+      els.editorBody.className = 'editor-body ' + mode;
+      q('.view-controls .btn.active').classList.remove('active');
+      q(`[id="view${mode.charAt(0).toUpperCase() + mode.slice(1)}Btn"]`)?.classList.add('active');
+  }
+
   // Wire events
   function wire() {
     els.newNoteBtn.addEventListener('click', createNote);
     els.deleteBtn.addEventListener('click', deleteActive);
     els.pinBtn.addEventListener('click', togglePin);
     els.searchInput.addEventListener('input', () => { state.search = els.searchInput.value; renderList(); });
+
+    els.viewSplitBtn.addEventListener('click', () => setViewMode('split'));
+    els.viewEditorBtn.addEventListener('click', () => setViewMode('editor-only'));
+    els.viewPreviewBtn.addEventListener('click', () => setViewMode('preview-only'));
 
     let t1, t2;
     els.titleInput.addEventListener('input', () => { clearTimeout(t1); t1 = setTimeout(autosave, 300); });
@@ -207,4 +224,5 @@
   renderList();
   wire();
   selectNote(state.activeId);
+  setViewMode('split'); // Default view
 })();
