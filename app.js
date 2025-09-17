@@ -132,6 +132,10 @@
         <div class="note-meta"><span>${fmtDate(n.updatedAt)}</span><span>${(n.content || '').length} chars</span></div>
       `;
       li.addEventListener('click', () => selectNote(n.id));
+      // Apply enter animation only when first rendering into DOM
+      li.classList.add('enter');
+      // Remove the class after the animation so re-renders don't replay
+      li.addEventListener('animationend', () => li.classList.remove('enter'), { once: true });
       els.notesList.appendChild(li);
     });
   }
@@ -201,6 +205,12 @@
     note.title = els.titleInput.value.trim();
     note.content = els.contentInput.value;
     els.previewOutput.innerHTML = marked.parse(note.content);
+    // brief fade-in on preview update for smoother feel
+    els.previewOutput.classList.remove('fade-in');
+    // force reflow to restart animation if needed
+    // eslint-disable-next-line no-unused-expressions
+    void els.previewOutput.offsetWidth;
+    els.previewOutput.classList.add('fade-in');
     note.updatedAt = now();
     save();
     renderList();
