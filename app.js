@@ -146,7 +146,8 @@
     if (!note) return;
     els.titleInput.value = note.title || '';
     els.contentInput.value = note.content || '';
-    els.previewOutput.innerHTML = marked.parse(note.content || '');
+  const html = marked.parse(note.content || '');
+  els.previewOutput.innerHTML = (window.DOMPurify ? DOMPurify.sanitize(html) : html);
     els.pinBtn.classList.toggle('active', !!note.pinned);
     renderList();
   }
@@ -204,7 +205,10 @@
     if (!note) return;
     note.title = els.titleInput.value.trim();
     note.content = els.contentInput.value;
-    els.previewOutput.innerHTML = marked.parse(note.content);
+    {
+      const html = marked.parse(note.content);
+      els.previewOutput.innerHTML = (window.DOMPurify ? DOMPurify.sanitize(html) : html);
+    }
     // brief fade-in on preview update for smoother feel
     els.previewOutput.classList.remove('fade-in');
     // force reflow to restart animation if needed
@@ -266,7 +270,34 @@
     els.viewEditorBtn.addEventListener('click', () => setViewMode('editor-only'));
     els.viewPreviewBtn.addEventListener('click', () => setViewMode('preview-only'));
 
-    window.addEventListener('mousemove', handleMouseMove);
+    // Pointer support (mouse, pen, touch) for parallax
+    const moveEvt = window.PointerEvent ? 'pointermove' : 'mousemove';
+    window.addEventListener(moveEvt, handleMouseMove);
+
+    // Keyboard shortcuts
+    window.addEventListener('keydown', (e) => {
+      // Avoid interfering with IME or content typing cases unless a modifier is pressed
+      const mod = e.ctrlKey || e.metaKey;
+      if (mod && e.key.toLowerCase() === 'n') { // Ctrl/Cmd+N -> new note
+        e.preventDefault();
+        createNote();
+      } else if (mod && e.key.toLowerCase() === 'p') { // Ctrl/Cmd+P -> pin
+        e.preventDefault();
+        togglePin();
+      } else if (mod && e.key.toLowerCase() === 'd') { // Ctrl/Cmd+D -> delete
+        e.preventDefault();
+        deleteActive();
+      } else if (mod && e.key === '1') { // Ctrl/Cmd+1 -> split
+        e.preventDefault();
+        setViewMode('split');
+      } else if (mod && e.key === '2') { // Ctrl/Cmd+2 -> editor only
+        e.preventDefault();
+        setViewMode('editor-only');
+      } else if (mod && e.key === '3') { // Ctrl/Cmd+3 -> preview only
+        e.preventDefault();
+        setViewMode('preview-only');
+      }
+    });
 
     let t1, t2;
     els.titleInput.addEventListener('input', () => { clearTimeout(t1); t1 = setTimeout(autosave, 300); });
