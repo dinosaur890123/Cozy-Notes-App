@@ -132,24 +132,60 @@
         <div class="note-meta"><span>${fmtDate(n.updatedAt)}</span><span>${(n.content || '').length} chars</span></div>
       `;
       li.addEventListener('click', () => selectNote(n.id));
-      // Apply enter animation only when first rendering into DOM
-      li.classList.add('enter');
-      // Remove the class after the animation so re-renders don't replay
-      li.addEventListener('animationend', () => li.classList.remove('enter'), { once: true });
       els.notesList.appendChild(li);
     });
   }
 
   function selectNote(id) {
-    state.activeId = id;
-    const note = state.notes.find(n => n.id === id);
-    if (!note) return;
-    els.titleInput.value = note.title || '';
-    els.contentInput.value = note.content || '';
-  const html = marked.parse(note.content || '');
-  els.previewOutput.innerHTML = (window.DOMPurify ? DOMPurify.sanitize(html) : html);
-    els.pinBtn.classList.toggle('active', !!note.pinned);
-    renderList();
+    // Guard: if selecting the same note, do nothing
+    if (state.activeId === id) return;
+
+    const next = state.notes.find(n => n.id === id);
+    if (!next) return;
+
+    // Cancel any ongoing swap timers
+    if (selectNote._swapTimer) {
+      clearTimeout(selectNote._swapTimer);
+      selectNote._swapTimer = null;
+    }
+
+    // Add swap-out animations
+    els.titleInput.classList.remove('swap-in');
+    els.contentInput.classList.remove('swap-in');
+    els.previewOutput.classList.remove('swap-in');
+    els.titleInput.classList.add('swap-out');
+    els.contentInput.classList.add('swap-out');
+    els.previewOutput.classList.add('swap-out');
+
+    // After swap-out completes, swap content and animate in
+    selectNote._swapTimer = setTimeout(() => {
+      state.activeId = id;
+      els.titleInput.value = next.title || '';
+      els.contentInput.value = next.content || '';
+      const html = marked.parse(next.content || '');
+      els.previewOutput.innerHTML = (window.DOMPurify ? DOMPurify.sanitize(html) : html);
+      els.pinBtn.classList.toggle('active', !!next.pinned);
+      els.previewOutput.scrollTop = 0;
+
+      // switch to swap-in
+      els.titleInput.classList.remove('swap-out');
+      els.contentInput.classList.remove('swap-out');
+      els.previewOutput.classList.remove('swap-out');
+      // Force reflow to ensure animations restart
+      void els.titleInput.offsetWidth;
+      els.titleInput.classList.add('swap-in');
+      els.contentInput.classList.add('swap-in');
+      els.previewOutput.classList.add('swap-in');
+
+      // Cleanup swap-in classes after animation
+      const cleanup = (el) => el.addEventListener('animationend', () => el.classList.remove('swap-in'), { once: true });
+      cleanup(els.titleInput);
+      cleanup(els.contentInput);
+      cleanup(els.previewOutput);
+
+      renderList();
+      selectNote._swapTimer = null;
+    }, 140); // match CSS swap-out duration
   }
 
   function createNote() {
@@ -157,6 +193,12 @@
     state.notes.unshift(n);
     save();
     renderList();
+    // Animate only the newly inserted element to avoid flashing
+    const li = els.notesList.querySelector(`li[data-id="${n.id}"]`);
+    if (li) {
+      li.classList.add('enter');
+      li.addEventListener('animationend', () => li.classList.remove('enter'), { once: true });
+    }
     selectNote(n.id);
     els.titleInput.focus();
   }
