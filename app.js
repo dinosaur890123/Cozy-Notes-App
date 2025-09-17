@@ -106,8 +106,9 @@
       li.dataset.id = n.id;
       li.className = n.id === state.activeId ? 'active' : '';
       const preview = (n.content || '').replace(/\n/g, ' ').slice(0, 80);
+      const pinIcon = n.pinned ? `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="var(--accent)" stroke="var(--bg)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>` : '';
       li.innerHTML = `
-        <div class="note-title">${n.pinned ? '📌 ' : ''}${n.title || 'Untitled'}</div>
+        <div class="note-title">${pinIcon} ${n.title || 'Untitled'}</div>
         <div class="note-preview">${preview}</div>
         <div class="note-meta"><span>${fmtDate(n.updatedAt)}</span><span>${(n.content || '').length} chars</span></div>
       `;
@@ -123,8 +124,7 @@
     els.titleInput.value = note.title || '';
     els.contentInput.value = note.content || '';
     els.previewOutput.innerHTML = marked.parse(note.content || '');
-    els.pinBtn.dataset.pinned = note.pinned ? 'true' : 'false';
-    els.pinBtn.textContent = note.pinned ? '📌' : '📍';
+    els.pinBtn.classList.toggle('active', !!note.pinned);
     renderList();
   }
 
@@ -134,6 +134,7 @@
     save();
     renderList();
     selectNote(n.id);
+    els.titleInput.focus();
   }
 
   function deleteActive() {
@@ -144,7 +145,13 @@
       state.activeId = state.notes[0]?.id || null;
       save();
       renderList();
-      if (state.activeId) selectNote(state.activeId); else { els.titleInput.value=''; els.contentInput.value=''; }
+      if (state.activeId) {
+        selectNote(state.activeId);
+      } else {
+        els.titleInput.value='';
+        els.contentInput.value='';
+        els.previewOutput.innerHTML = '';
+      }
     }
   }
 
@@ -189,8 +196,15 @@
 
   function setViewMode(mode) {
       els.editorBody.className = 'editor-body ' + mode;
-      q('.view-controls .btn.active').classList.remove('active');
-      q(`[id="view${mode.charAt(0).toUpperCase() + mode.slice(1)}Btn"]`)?.classList.add('active');
+      const currentActive = q('.view-controls .btn.active');
+      if(currentActive) currentActive.classList.remove('active');
+      
+      let targetBtn;
+      if (mode === 'split') targetBtn = els.viewSplitBtn;
+      if (mode === 'editor-only') targetBtn = els.viewEditorBtn;
+      if (mode === 'preview-only') targetBtn = els.viewPreviewBtn;
+      
+      if(targetBtn) targetBtn.classList.add('active');
   }
 
   // Wire events
