@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<meta name="theme-color" content="#2b2a27" />
+		<title>Cozy Notes — September Vibes</title>
+		<meta name="description" content="A cozy, visually stunning notes app with subtle falling leaves and September vibes." />
+
+		<!-- Fonts -->
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@600;700;800&display=swap" rel="stylesheet" />
+
+		<link rel="stylesheet" href="./styles.css" />
+	</head>
+	<body>
+		<noscript>You need to enable JavaScript to run this app.</noscript>
+
+		<!-- Falling leaves background container -->
+		<div id="leaves-layer" aria-hidden="true"></div>
+
+		<div id="app" class="app">
+			<aside class="sidebar">
+				<div class="brand">
+					<div class="logo" aria-hidden="true">🍁</div>
+					<div class="brand-text">
+						<h1>Cozy Notes</h1>
+						<p>September vibes</p>
+					</div>
+				</div>
+
+				<div class="sidebar-controls">
+					<div class="search">
+						<input id="searchInput" type="search" placeholder="Search notes..." autocomplete="off" />
+					</div>
+					<button id="newNoteBtn" class="btn primary">+ New note</button>
+				</div>
+
+				<ul id="notesList" class="notes-list" role="list" aria-label="Notes list">
+					<!-- Notes will render here -->
+				</ul>
+			</aside>
+
+			<main class="editor" aria-live="polite">
+				<header class="editor-header">
+					<input id="titleInput" class="title-input" type="text" placeholder="Untitled note" />
+					<div class="editor-actions">
+						<button id="pinBtn" class="btn subtle" title="Pin/Unpin">📌</button>
+						<button id="deleteBtn" class="btn danger" title="Delete note">🗑️</button>
+					</div>
+				</header>
+				<section class="editor-body">
+					<textarea id="contentInput" class="content-input" placeholder="Start writing your cozy thoughts..."></textarea>
+				</section>
+			</main>
+		</div>
+
+		<footer class="footer">
+			<small>Made with ☕, 🍂, and warm hues.</small>
+		</footer>
+
+		<script src="./app.js" defer></script>
+	</body>
+	</html>

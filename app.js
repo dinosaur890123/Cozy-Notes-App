@@ -1,0 +1,210 @@
+/* Cozy Notes App — September Vibes */
+(function () {
+  const q = (s, r = document) => r.querySelector(s);
+  const qa = (s, r = document) => Array.from(r.querySelectorAll(s));
+
+  const state = {
+    notes: [],
+    activeId: null,
+    search: '',
+  };
+
+  const els = {
+    leavesLayer: q('#leaves-layer'),
+    notesList: q('#notesList'),
+    newNoteBtn: q('#newNoteBtn'),
+    searchInput: q('#searchInput'),
+    titleInput: q('#titleInput'),
+    contentInput: q('#contentInput'),
+    pinBtn: q('#pinBtn'),
+    deleteBtn: q('#deleteBtn'),
+  };
+
+  // Storage
+  const STORAGE_KEY = 'cozy-notes-v1';
+  const save = () => localStorage.setItem(STORAGE_KEY, JSON.stringify(state.notes));
+  const load = () => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return [];
+      const list = JSON.parse(raw);
+      return Array.isArray(list) ? list : [];
+    } catch (e) {
+      console.warn('Storage parse failed', e);
+      return [];
+    }
+  };
+
+  // Utils
+  const uid = () => Math.random().toString(36).slice(2, 9);
+  const now = () => new Date().toISOString();
+  const fmtDate = (iso) => new Date(iso).toLocaleString();
+
+  // Leaves background
+  function createLeafElement(hue, delayMs) {
+    const leaf = document.createElement('div');
+    leaf.className = 'leaf';
+    leaf.style.setProperty('--x', (Math.random() * window.innerWidth - 40) + 'px');
+    const drift = (Math.random() * 140 - 70);
+    leaf.style.setProperty('--xEnd', (drift) + 'px');
+
+    const dur = 9 + Math.random() * 9; // 9-18s fall
+    leaf.style.animation = `fall ${dur}s linear ${delayMs}ms forwards, sway ${5 + Math.random() * 4}s ease-in-out ${delayMs}ms infinite`;
+
+    const fill = `hsl(${hue}, 65%, ${60 + Math.random() * 12}%)`;
+    leaf.innerHTML = `
+      <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 8c10 2 22 6 30 14s12 20 6 26-20 2-28-6S10 18 12 8z" fill="${fill}" />
+        <path d="M12 8c8 8 16 16 24 24" stroke="rgba(0,0,0,0.25)" stroke-width="2" fill="none"/>
+      </svg>
+    `;
+    return leaf;
+  }
+
+  function spawnLeaves() {
+    const targetCount = Math.min(26, Math.max(12, Math.round(window.innerWidth / 60)));
+    const current = els.leavesLayer.childElementCount;
+    const toAdd = Math.max(0, targetCount - current);
+    for (let i = 0; i < toAdd; i++) {
+      const hue = 18 + Math.random() * 35; // orange to amber range
+      const delay = Math.random() * 4000; // faster initial start for new leaves
+      const leaf = createLeafElement(hue, delay);
+      els.leavesLayer.appendChild(leaf);
+      // Cleanup when finished falling
+      setTimeout(() => leaf.remove(), 20000 + delay);
+    }
+    // Keep population stable by checking frequently
+    setTimeout(spawnLeaves, 1500);
+  }
+
+  // Notes logic
+  function sortNotes(a, b) {
+    if (a.pinned && !b.pinned) return -1;
+    if (!a.pinned && b.pinned) return 1;
+    return new Date(b.updatedAt) - new Date(a.updatedAt);
+  }
+
+  function filteredNotes() {
+    const term = state.search.trim().toLowerCase();
+    if (!term) return [...state.notes].sort(sortNotes);
+    return state.notes.filter(n =>
+      (n.title || '').toLowerCase().includes(term) ||
+      (n.content || '').toLowerCase().includes(term)
+    ).sort(sortNotes);
+  }
+
+  function renderList() {
+    const list = filteredNotes();
+    els.notesList.innerHTML = '';
+    list.forEach(n => {
+      const li = document.createElement('li');
+      li.dataset.id = n.id;
+      li.className = n.id === state.activeId ? 'active' : '';
+      const preview = (n.content || '').replace(/\n/g, ' ').slice(0, 80);
+      li.innerHTML = `
+        <div class="note-title">${n.pinned ? '📌 ' : ''}${n.title || 'Untitled'}</div>
+        <div class="note-preview">${preview}</div>
+        <div class="note-meta"><span>${fmtDate(n.updatedAt)}</span><span>${(n.content || '').length} chars</span></div>
+      `;
+      li.addEventListener('click', () => selectNote(n.id));
+      els.notesList.appendChild(li);
+    });
+  }
+
+  function selectNote(id) {
+    state.activeId = id;
+    const note = state.notes.find(n => n.id === id);
+    if (!note) return;
+    els.titleInput.value = note.title || '';
+    els.contentInput.value = note.content || '';
+    els.pinBtn.dataset.pinned = note.pinned ? 'true' : 'false';
+    els.pinBtn.textContent = note.pinned ? '📌' : '📍';
+    renderList();
+  }
+
+  function createNote() {
+    const n = { id: uid(), title: 'New note', content: '', pinned: false, createdAt: now(), updatedAt: now() };
+    state.notes.unshift(n);
+    save();
+    renderList();
+    selectNote(n.id);
+  }
+
+  function deleteActive() {
+    if (!state.activeId) return;
+    const i = state.notes.findIndex(n => n.id === state.activeId);
+    if (i >= 0) {
+      state.notes.splice(i, 1);
+      state.activeId = state.notes[0]?.id || null;
+      save();
+      renderList();
+      if (state.activeId) selectNote(state.activeId); else { els.titleInput.value=''; els.contentInput.value=''; }
+    }
+  }
+
+  function togglePin() {
+    const note = state.notes.find(n => n.id === state.activeId);
+    if (!note) return;
+    note.pinned = !note.pinned;
+    note.updatedAt = now();
+    save();
+    renderList();
+    selectNote(note.id);
+  }
+
+  function autosave() {
+    const note = state.notes.find(n => n.id === state.activeId);
+    if (!note) return;
+    note.title = els.titleInput.value.trim();
+    note.content = els.contentInput.value;
+    note.updatedAt = now();
+    save();
+    renderList();
+  }
+
+  function ensureInitialNote() {
+    state.notes = load();
+    if (state.notes.length === 0) {
+      state.notes = [
+        {
+          id: uid(),
+          title: 'Welcome to Cozy Notes',
+          content: 'It\'s September. The air is crisp, coffee is warm, and your thoughts deserve a soft place to land.\n\nCreate a new note with the + button. Pin important notes with the pin icon. Your notes are saved automatically in your browser.',
+          pinned: true,
+          createdAt: now(),
+          updatedAt: now(),
+        },
+      ];
+      save();
+    }
+    state.activeId = state.notes[0].id;
+  }
+
+  // Wire events
+  function wire() {
+    els.newNoteBtn.addEventListener('click', createNote);
+    els.deleteBtn.addEventListener('click', deleteActive);
+    els.pinBtn.addEventListener('click', togglePin);
+    els.searchInput.addEventListener('input', () => { state.search = els.searchInput.value; renderList(); });
+
+    let t1, t2;
+    els.titleInput.addEventListener('input', () => { clearTimeout(t1); t1 = setTimeout(autosave, 300); });
+    els.contentInput.addEventListener('input', () => { clearTimeout(t2); t2 = setTimeout(autosave, 400); });
+
+    // Keyboard: Ctrl/Cmd+N new note, Ctrl/Cmd+Backspace delete
+    window.addEventListener('keydown', (e) => {
+      const mod = e.ctrlKey || e.metaKey;
+      if (mod && e.key.toLowerCase() === 'n') { e.preventDefault(); createNote(); }
+      if (mod && (e.key === 'Backspace' || e.key === 'Delete')) { e.preventDefault(); deleteActive(); }
+    });
+
+    // Background leaves
+    spawnLeaves();
+  }
+
+  // Init
+  ensureInitialNote();
+  renderList();
+  wire();
+  selectNote(state.activeId);
+})();
