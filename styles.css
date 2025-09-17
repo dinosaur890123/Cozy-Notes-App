@@ -21,11 +21,22 @@ body {
   margin: 0;
   font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
   color: var(--text);
-  background: radial-gradient(1200px 800px at 10% -10%, rgba(226, 156, 97, 0.15), transparent),
-              radial-gradient(900px 700px at 100% 10%, rgba(129, 178, 154, 0.1), transparent),
-              linear-gradient(180deg, #25231f 0%, #1f1e1b 100%);
+  background: #1f1e1b;
   overflow: hidden;
   position: relative;
+}
+
+#parallax-bg {
+    position: fixed;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    z-index: 0;
+    background: radial-gradient(circle at calc(50% + var(--mouse-x, 0px) * 0.2) calc(50% + var(--mouse-y, 0px) * 0.2), rgba(226, 156, 97, 0.15), transparent 40%),
+                radial-gradient(circle at calc(75% + var(--mouse-x, 0px) * 0.4) calc(25% + var(--mouse-y, 0px) * 0.4), rgba(129, 178, 154, 0.1), transparent 35%),
+                linear-gradient(180deg, #25231f 0%, #1f1e1b 100%);
+    transition: transform 0.2s ease-out;
 }
 
 body::before {
@@ -46,6 +57,7 @@ body::before {
   grid-template-columns: 320px 1fr;
   grid-template-rows: 100vh;
   gap: 0;
+  z-index: 1;
 }
 
 /* Falling leaves layer */
@@ -54,13 +66,13 @@ body::before {
   inset: 0;
   pointer-events: none;
   overflow: hidden;
-  z-index: 0;
+  z-index: 2;
 }
 
 /* Sidebar */
 .sidebar {
   position: relative;
-  z-index: 1;
+  z-index: 3;
   background: linear-gradient(180deg, var(--panel-bg) 0%, var(--panel-bg-2) 100%);
   backdrop-filter: blur(12px);
   border-right: 1px solid var(--border-color);
@@ -137,7 +149,7 @@ body::before {
 .notes-list {
   list-style: none;
   margin: 8px 0 0 0;
-  padding: 0;
+  padding: 0 4px 4px 4px;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -174,7 +186,7 @@ body::before {
 /* Editor */
 .editor {
   position: relative;
-  z-index: 1;
+  z-index: 3;
   display: grid;
   grid-template-rows: auto 1fr;
   height: 100vh;
@@ -294,7 +306,7 @@ body::before {
   position: fixed;
   left: 16px;
   bottom: 12px;
-  z-index: 2;
+  z-index: 4;
   color: var(--muted);
   background: rgba(0,0,0,0.2);
   padding: 6px 10px;

@@ -10,6 +10,7 @@
   };
 
   const els = {
+    parallaxBg: q('#parallax-bg'),
     leavesLayer: q('#leaves-layer'),
     notesList: q('#notesList'),
     newNoteBtn: q('#newNoteBtn'),
@@ -223,4 +224,36 @@
       if(targetBtn) targetBtn.classList.add('active');
   }
 
-  // Wire events 
+  // Wire events
+  function wire() {
+    els.newNoteBtn.addEventListener('click', createNote);
+    els.deleteBtn.addEventListener('click', deleteActive);
+    els.pinBtn.addEventListener('click', togglePin);
+    els.searchInput.addEventListener('input', (e) => {
+      state.search = e.target.value;
+      renderList();
+    });
+
+    els.viewSplitBtn.addEventListener('click', () => setViewMode('split'));
+    els.viewEditorBtn.addEventListener('click', () => setViewMode('editor-only'));
+    els.viewPreviewBtn.addEventListener('click', () => setViewMode('preview-only'));
+
+    window.addEventListener('mousemove', handleMouseMove);
+
+    let t1, t2;
+    els.titleInput.addEventListener('input', () => { clearTimeout(t1); t1 = setTimeout(autosave, 300); });
+    els.contentInput.addEventListener('input', () => { clearTimeout(t2); t2 = setTimeout(autosave, 300); });
+  }
+
+  // Init
+  function init() {
+    ensureInitialNote();
+    renderList();
+    selectNote(state.activeId);
+    setViewMode('split');
+    spawnLeaves();
+    wire();
+  }
+
+  init();
+})();
