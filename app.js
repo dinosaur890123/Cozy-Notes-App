@@ -353,6 +353,91 @@
       if(targetBtn) targetBtn.classList.add('active');
   }
 
+  // Toolbar helpers
+  function surroundSelection(textarea, before, after = before) {
+    const { selectionStart: s, selectionEnd: e, value } = textarea;
+    const hasSelection = s !== e;
+    const sel = value.slice(s, e) || '';
+    const next = value.slice(0, s) + before + sel + after + value.slice(e);
+    const caret = s + before.length + (hasSelection ? sel.length : 0);
+    textarea.value = next;
+    textarea.focus();
+    textarea.setSelectionRange(caret, caret);
+  }
+  function insertLinePrefix(textarea, prefix) {
+    const { selectionStart: s, selectionEnd: e, value } = textarea;
+    const start = value.lastIndexOf('\n', s - 1) + 1;
+    const end = value.indexOf('\n', e);
+    const sliceEnd = end === -1 ? value.length : end;
+    const lines = value.slice(start, sliceEnd).split('\n').map(l => prefix + l);
+    const next = value.slice(0, start) + lines.join('\n') + value.slice(sliceEnd);
+    const delta = prefix.length * lines.length;
+    textarea.value = next;
+    textarea.focus();
+    textarea.setSelectionRange(e + delta, e + delta);
+  }
+  function insertBlock(textarea, content) {
+    const { selectionStart: s, selectionEnd: e, value } = textarea;
+    const start = value.lastIndexOf('\n', s - 1) + 1;
+    const next = value.slice(0, start) + content + '\n' + value.slice(start);
+    textarea.value = next;
+    const caret = start + content.length + 1;
+    textarea.focus();
+    textarea.setSelectionRange(caret, caret);
+  }
+
+  function execCmd(cmd) {
+    const ta = els.contentInput;
+    switch (cmd) {
+      case 'bold':
+        return surroundSelection(ta, '**');
+      case 'italic':
+        return surroundSelection(ta, '*');
+      case 'code':
+        return surroundSelection(ta, '`');
+      case 'h1':
+        return insertLinePrefix(ta, '# ');
+      case 'h2':
+        return insertLinePrefix(ta, '## ');
+      case 'h3':
+        return insertLinePrefix(ta, '### ');
+      case 'link': {
+        const url = 'https://';
+        const { selectionStart: s, selectionEnd: e, value } = ta;
+        const sel = value.slice(s, e) || 'text';
+        ta.value = value.slice(0, s) + `[${sel}](${url})` + value.slice(e);
+        const caret = s + 1 + sel.length + 3; // inside ()
+        ta.focus();
+        ta.setSelectionRange(caret, caret + url.length);
+        break;
+      }
+      case 'quote':
+        return insertLinePrefix(ta, '> ');
+      case 'hr':
+        return insertBlock(ta, '\n---\n');
+      case 'ul':
+        return insertLinePrefix(ta, '- ');
+      case 'ol':
+        return insertLinePrefix(ta, '1. ');
+      case 'task':
+        return insertLinePrefix(ta, '- [ ] ');
+      case 'codeblock':
+        return insertBlock(ta, '```\n\n```');
+    }
+  }
+
+  function wireToolbar() {
+    const bar = document.querySelector('.md-toolbar');
+    if (!bar) return;
+    bar.addEventListener('click', (e) => {
+      const btn = e.target.closest('.tb-btn');
+      if (!btn) return;
+      execCmd(btn.dataset.cmd);
+      // trigger autosave debounce
+      setTimeout(autosave, 0);
+    });
+  }
+
   // Wire events
   function wire() {
     els.newNoteBtn.addEventListener('click', createNote);
@@ -399,6 +484,8 @@
     let t1, t2;
     els.titleInput.addEventListener('input', () => { clearTimeout(t1); t1 = setTimeout(autosave, 300); });
     els.contentInput.addEventListener('input', () => { clearTimeout(t2); t2 = setTimeout(autosave, 300); });
+
+    wireToolbar();
   }
 
   // Init
