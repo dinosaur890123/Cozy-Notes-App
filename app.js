@@ -24,6 +24,7 @@
     viewSplitBtn: q('#viewSplitBtn'),
     viewEditorBtn: q('#viewEditorBtn'),
     viewPreviewBtn: q('#viewPreviewBtn'),
+    snackbar: q('#snackbar'),
   };
 
   // Storage
@@ -117,17 +118,33 @@
     ).sort(sortNotes);
   }
 
+  // Highlight helper for search term in list (safe: escapes HTML first)
+  function escapeHTML(s = '') {
+    return s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+  function highlight(text = '', term = '') {
+    const safe = escapeHTML(text);
+    const t = term.trim();
+    if (!t) return safe;
+    const esc = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const re = new RegExp(`(${esc(t)})`, 'ig');
+    return safe.replace(re, '<mark>$1</mark>');
+  }
+
   function renderList() {
     const list = filteredNotes();
     els.notesList.innerHTML = '';
+    const term = state.search.trim();
     list.forEach(n => {
       const li = document.createElement('li');
       li.dataset.id = n.id;
       li.className = n.id === state.activeId ? 'active' : '';
-      const preview = (n.content || '').replace(/\n/g, ' ').slice(0, 80);
+      const rawPreview = (n.content || '').replace(/\n/g, ' ').slice(0, 80);
+      const preview = highlight(rawPreview, term);
+      const titleHtml = highlight(n.title || 'Untitled', term);
       const pinIcon = n.pinned ? `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="var(--accent)" stroke="var(--bg)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>` : '';
       li.innerHTML = `
-        <div class="note-title">${pinIcon} ${n.title || 'Untitled'}</div>
+        <div class="note-title">${pinIcon} ${titleHtml}</div>
         <div class="note-preview">${preview}</div>
         <div class="note-meta"><span>${fmtDate(n.updatedAt)}</span><span>${(n.content || '').length} chars</span></div>
       `;
@@ -207,22 +224,33 @@
     if (!state.activeId) return;
     
     const noteEl = q(`[data-id="${state.activeId}"]`);
-    const performDelete = () => {
-        const i = state.notes.findIndex(n => n.id === state.activeId);
-        if (i === -1) return;
+  const performDelete = () => {
+    const i = state.notes.findIndex(n => n.id === state.activeId);
+    if (i === -1) return;
 
-        state.notes.splice(i, 1);
-        state.activeId = state.notes[0]?.id || null;
-        save();
-        renderList();
-        if (state.activeId) {
-            selectNote(state.activeId);
-        } else {
-            els.titleInput.value = '';
-            els.contentInput.value = '';
-            els.previewOutput.innerHTML = '';
-        }
-    };
+    const removed = state.notes.splice(i, 1)[0];
+    const nextActiveId = state.notes[0]?.id || null;
+    state.activeId = nextActiveId;
+    save();
+    renderList();
+    if (state.activeId) {
+      selectNote(state.activeId);
+    } else {
+      els.titleInput.value = '';
+      els.contentInput.value = '';
+      els.previewOutput.innerHTML = '';
+    }
+
+    // Show snackbar with Undo
+    showSnackbar(`Deleted "${removed.title || 'Untitled'}"`, () => {
+      // Undo: restore note at same index
+      state.notes.splice(i, 0, removed);
+      state.activeId = removed.id;
+      save();
+      renderList();
+      selectNote(removed.id);
+    });
+  };
 
     if (noteEl) {
         noteEl.style.animation = 'fade-out 0.3s forwards';
@@ -230,6 +258,25 @@
     } else {
         performDelete();
     }
+  }
+
+  // Snackbar helper
+  let snackbarTimer = null;
+  function showSnackbar(message, onUndo) {
+    if (!els.snackbar) return;
+    els.snackbar.innerHTML = `<span>${message}</span><button class="action">Undo</button>`;
+    els.snackbar.classList.add('show');
+    const btn = els.snackbar.querySelector('button.action');
+    const undo = () => {
+      clearTimeout(snackbarTimer);
+      els.snackbar.classList.remove('show');
+      if (onUndo) onUndo();
+    };
+    btn.addEventListener('click', undo, { once: true });
+    clearTimeout(snackbarTimer);
+    snackbarTimer = setTimeout(() => {
+      els.snackbar.classList.remove('show');
+    }, 4000);
   }
 
   function togglePin() {
@@ -250,6 +297,14 @@
     {
       const html = marked.parse(note.content);
       els.previewOutput.innerHTML = (window.DOMPurify ? DOMPurify.sanitize(html) : html);
+    }
+    // Transient save indicator
+    const saveEl = q('#saveStatus');
+    if (saveEl) {
+      saveEl.textContent = 'Saved';
+      saveEl.classList.add('show');
+      clearTimeout(autosave._saveStatusTimer);
+      autosave._saveStatusTimer = setTimeout(() => saveEl.classList.remove('show'), 800);
     }
     // brief fade-in on preview update for smoother feel
     els.previewOutput.classList.remove('fade-in');
