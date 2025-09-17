@@ -139,19 +139,30 @@
 
   function deleteActive() {
     if (!state.activeId) return;
-    const i = state.notes.findIndex(n => n.id === state.activeId);
-    if (i >= 0) {
-      state.notes.splice(i, 1);
-      state.activeId = state.notes[0]?.id || null;
-      save();
-      renderList();
-      if (state.activeId) {
-        selectNote(state.activeId);
-      } else {
-        els.titleInput.value='';
-        els.contentInput.value='';
-        els.previewOutput.innerHTML = '';
-      }
+    
+    const noteEl = q(`[data-id="${state.activeId}"]`);
+    const performDelete = () => {
+        const i = state.notes.findIndex(n => n.id === state.activeId);
+        if (i === -1) return;
+
+        state.notes.splice(i, 1);
+        state.activeId = state.notes[0]?.id || null;
+        save();
+        renderList();
+        if (state.activeId) {
+            selectNote(state.activeId);
+        } else {
+            els.titleInput.value = '';
+            els.contentInput.value = '';
+            els.previewOutput.innerHTML = '';
+        }
+    };
+
+    if (noteEl) {
+        noteEl.style.animation = 'fade-out 0.3s forwards';
+        setTimeout(performDelete, 300);
+    } else {
+        performDelete();
     }
   }
 
@@ -195,7 +206,12 @@
   }
 
   function setViewMode(mode) {
-      els.editorBody.className = 'editor-body ' + mode;
+      els.editorBody.className = 'editor-body';
+      // Using a timeout to allow the class removal to register before adding the new one, ensuring transition fires
+      setTimeout(() => {
+        els.editorBody.classList.add(mode);
+      }, 0);
+
       const currentActive = q('.view-controls .btn.active');
       if(currentActive) currentActive.classList.remove('active');
       
@@ -207,36 +223,4 @@
       if(targetBtn) targetBtn.classList.add('active');
   }
 
-  // Wire events
-  function wire() {
-    els.newNoteBtn.addEventListener('click', createNote);
-    els.deleteBtn.addEventListener('click', deleteActive);
-    els.pinBtn.addEventListener('click', togglePin);
-    els.searchInput.addEventListener('input', () => { state.search = els.searchInput.value; renderList(); });
-
-    els.viewSplitBtn.addEventListener('click', () => setViewMode('split'));
-    els.viewEditorBtn.addEventListener('click', () => setViewMode('editor-only'));
-    els.viewPreviewBtn.addEventListener('click', () => setViewMode('preview-only'));
-
-    let t1, t2;
-    els.titleInput.addEventListener('input', () => { clearTimeout(t1); t1 = setTimeout(autosave, 300); });
-    els.contentInput.addEventListener('input', () => { clearTimeout(t2); t2 = setTimeout(autosave, 400); });
-
-    // Keyboard: Ctrl/Cmd+N new note, Ctrl/Cmd+Backspace delete
-    window.addEventListener('keydown', (e) => {
-      const mod = e.ctrlKey || e.metaKey;
-      if (mod && e.key.toLowerCase() === 'n') { e.preventDefault(); createNote(); }
-      if (mod && (e.key === 'Backspace' || e.key === 'Delete')) { e.preventDefault(); deleteActive(); }
-    });
-
-    // Background leaves
-    spawnLeaves();
-  }
-
-  // Init
-  ensureInitialNote();
-  renderList();
-  wire();
-  selectNote(state.activeId);
-  setViewMode('split'); // Default view
-})();
+  // Wire events 
